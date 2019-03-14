@@ -6,7 +6,6 @@ import itertools
 from operator import add
 import csv
 
-
 def getHashSet(HASH_NUM):
     a = [randrange(HASH_NUM) for _ in xrange(0, HASH_NUM)]
     b = [randrange(PRIME_NUM/2) for _ in xrange(0, HASH_NUM)]
@@ -28,44 +27,25 @@ def minhash(rate):
             if busi not in signiture:
                 signiture[busi] = initList[:]
     for row in rate:
-        # rowHash = list()
-        # for i in range(len(hashSet)):
-        #     rowHash.append(getHashValue(row[0], hashSet[i]))
-        # # print row[0], rowHash, len(rowHash)
-        # for busi in row[1]:
-        #     for i in range(len(hashSet)):
-        #         if signiture[busi][i] == -1 or signiture[busi][i] > rowHash[i]:
-        #             signiture[busi][i] = rowHash[i]
         for i in range(len(hashSet)):
             hValue = getHashValue(row[0], hashSet[i])
             for busi in row[1]:
                 if signiture[busi][i] == -1 or signiture[busi][i] > hValue:
                     signiture[busi][i] = hValue
-    # print signiture
     return signiture
 
 
 def getBandHashValue(band):
-    # Combine together as string
     value = ''
     for x in band:
         value += str(x)
-        # value += '5'
     return int(value) % BUCKET_PRIME
-
-    # # Manhattan distance
-    # value = 0
-    # for x in band:
-    #     value += x
-    # return value % BUCKET_PRIME
 
 
 def getJaccardSim(group):
     a = set(busi[group[0]])
     b = set(busi[group[1]])
     jaccardSim = float(len(a & b)) / len(a | b)
-    # print a, b
-    # print len(a & b), len(a | b)
     return jaccardSim
 
 
@@ -76,7 +56,6 @@ OUTPUT_CSV = sys.argv[2]
 
 PRIME_NUM = 997
 HASH_NUM = 120 #150
-# BAND = 20 #30
 ROWS = 3
 BUCKET_PRIME =  99991
 
@@ -85,21 +64,11 @@ sc = SparkContext('local[*]', 'LSH')
 rawData = sc.textFile(INPUT_CSV, None, False)
 header = rawData.first()
 rawData = rawData.filter(lambda x: x != header).map(lambda x: x.split(','))
-
-# user = rawData.map(lambda x: (x[0], 1)).reduceByKey(add)
-# print "user count: ", user.count()
-# userToInt = user.map(lambda x: abs(hash(x[0])) % (10**5))
-# print "user to int: ", userToInt.collect()
-# busi = rawData.map(lambda x: (x[1], 1)).reduceByKey(add)
-# print "busi count: ", busi.count()
-
-
-rateData = rawData.map(lambda x: (abs(hash(x[0])) % (10**5), [x[1]])).reduceByKey(lambda x,y: x+y).sortByKey()
+rateData = rawData.map(lambda x: (abs(hash(x[0])) % (10**9), [x[1]])).reduceByKey(lambda x,y: x+y).sortByKey()
 # print rateData.take(10)
 
 #minhash
 signiture = minhash(rateData.collect())
-# print signiture
 
 #LSH
 candidate = set()
@@ -118,10 +87,7 @@ for i in range(0, HASH_NUM, 3):
         count += 1
         for x in itertools.chain(*[itertools.combinations(bandDict[bucket], 2)]):
             simPair = tuple(sorted(x))
-            # print bucket, simPair
             candidate.add(simPair)
-    # print "3-count: ", count
-    # print "3-candidate: ", len(candidate)
 
 for i in range(0, HASH_NUM, 4):
     bandDict = dict()
@@ -139,13 +105,9 @@ for i in range(0, HASH_NUM, 4):
         for x in itertools.chain(
                 *[itertools.combinations(bandDict[bucket], 2)]):
             simPair = tuple(sorted(x))
-            # print bucket, simPair
             candidate.add(simPair)
-    # print "4-count: ", count
-    # print "4-candidate: ", len(candidate)
-# print candidate
 
-busiData = rawData.map(lambda x: (x[1], [abs(hash(x[0])) % (10**6)])).reduceByKey(lambda x,y: x+y)
+busiData = rawData.map(lambda x: (x[1], [abs(hash(x[0])) % (10**9)])).reduceByKey(lambda x,y: x+y)
 busi = dict()
 for row in busiData.collect():
     busi[row[0]] = row[1]
@@ -154,12 +116,9 @@ res = list()
 for group in candidate:
     jacSim = getJaccardSim(group)
     if jacSim >= 0.5:
-        # print (group, jacSim)
         res.append((group[0],group[1], jacSim))
 res = sorted(res, key = lambda x: x[0])
-# print res
 print "Total: ", len(res)
-
 
 # ==================== BRUTH FORCE ====================
 # busiData = rawData.map(lambda x: (x[1], [abs(hash(x[0])) % (10**5)])).reduceByKey(lambda x,y: x+y)
@@ -204,9 +163,7 @@ with open(OUTPUT_CSV, 'w') as csv_output:
 timeEnd = time.time()
 print "Duration: %f sec" % (timeEnd - timeStart)
 
-
-
-# spark-submit \
+# bin/spark-submit \
 # --conf "spark.driver.extraJavaOptions=-Dlog4j.configuration=file:conf/log4j.xml" \
 # --conf "spark.executor.extraJavaOptions=-Dlog4j.configuration=file:conf/log4j.xml" \
-# ../hw3/jingyue_fu_task1.py ../hw3/input/yelp_train.csv ../hw3/output/jingyue_fu_task1.csv
+# ../inf553-hw3/jingyue_fu_task1.py ../inf553-hw3/input/yelp_train.csv ../inf553-hw3/output/jingyue_fu_task1.csv
