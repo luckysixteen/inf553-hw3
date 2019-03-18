@@ -38,7 +38,12 @@ for user in userHash:
 for busi in busiHash:
     if busi[0] not in busiDict:
         busiDict[busi[0]] = busi[1]
-
+ratings = rawData.map(lambda x: (
+        abs(hash(x[0])) % (10**9), (
+        abs(hash(x[1])) % (10**9), float(x[2]))))
+test = testData.map(lambda x: (
+        abs(hash(x[0])) % (10**9),
+        abs(hash(x[1])) % (10**9)))
 
 # CASE 1: Model-based CF recommendation system
 if CASE == 1:
@@ -48,23 +53,45 @@ if CASE == 1:
     rank = 10
     numIterations = 10
     model = ALS.train(ratings, rank, numIterations)
+    predictions = model.predictAll(test).map(lambda r: ((r[0], r[1]), r[2]))
 
-test = testData.map(lambda x: (
-    abs(hash(x[0])) % (10**9),
-    abs(hash(x[1])) % (10**9)))
-predictions = model.predictAll(test).map(lambda r: ((r[0], r[1]), r[2]))
+
+# CASE 2: User-based CF recommendation system
+if CASE == 2:
+    ratings = ratings.groupByKey().mapValues(list)
+    test = test.groupByKey().mapValues(list)
+    for usr in test.collect():
+        i = ratings.filter(lambda x: x[0] == usr[0])
+        wList = list()
+        for j in ratings.filter(lambda x: x[0] != usr[0]):
+            iList = list()
+            jList = list()
+            for icount in range(len(i[1])):
+                for jcount in range(len(j[1])):
+                    if i[1][icount][0] == j[1][jcount][0]:
+                        sumi.append(i[1][icount][1])
+                        sumj.append(j[1][icount][1])
+            if len(iList) != 0:
+                averi = sum(iList) / len(iList)
+                averj = sum(jList) / len(jList)
+                
+
+        # for busi in user[1]:
+
+
+# TEST
+# ratesAndPreds = testData.map(lambda r: ((r[0], r[1]), r[2])).join(predictions)
+# RSME = ratesAndPreds.map(lambda x: (x[1][0] - x[1][1])**2).mean() ** (1/2)
+# print "Root Mean Squared Error: ", RSME
+
+
+
+# Write into CSV
 predictionsPrint = list()
 for pred in predictions.collect():
     res = (userDict[pred[0][0]], busiDict[pred[0][1]], pred[1])
     predictionsPrint.append(res)
-# print "predictions: ", predictionsPrint
-
-# TEST
-ratesAndPreds = testData.map(lambda r: ((r[0], r[1]), r[2])).join(predictions)
-RSME = ratesAndPreds.map(lambda x: (x[1][0] - x[1][1])**2).mean() ** (1/2)
-print "Root Mean Squared Error: ", RSME
-
-# Write into CSV
+    # print "predictions: ", predictionsPrint
 with open(OUTPUT, 'w') as csv_output:
     csv_writer = csv.writer(csv_output)
     csv_writer.writerow(['user_id', 'business_id', 'prediction'])
