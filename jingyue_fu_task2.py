@@ -61,20 +61,42 @@ if CASE == 2:
     ratings = ratings.groupByKey().mapValues(list)
     test = test.groupByKey().mapValues(list)
     for usr in test.collect():
-        i = ratings.filter(lambda x: x[0] == usr[0])
+        i = ratings.filter(lambda x: x[0] == usr[0]).collect()[0]
+        busiIni = set()
+        for icount in range(len(i[1])):
+            busiIni.add(i[1][icount][0])
         wList = list()
-        for j in ratings.filter(lambda x: x[0] != usr[0]):
+        for j in ratings.filter(lambda x: x[0] != usr[0]).collect():
             iList = list()
             jList = list()
-            for icount in range(len(i[1])):
-                for jcount in range(len(j[1])):
-                    if i[1][icount][0] == j[1][jcount][0]:
-                        sumi.append(i[1][icount][1])
-                        sumj.append(j[1][icount][1])
-            if len(iList) != 0:
+            busiInj = set()
+            for jcount in range(len(j[1])):
+                busiInj.add(j[1][jcount][0])
+            if len(busiIni & busiInj) > 4:
+                for icount in range(len(i[1])):
+                    for jcount in range(len(j[1])):
+                        if i[1][icount][0] == j[1][jcount][0]:
+                            iList.append(i[1][icount][1])
+                            jList.append(j[1][jcount][1])
                 averi = sum(iList) / len(iList)
                 averj = sum(jList) / len(jList)
-                
+                number = 0
+                denomi = 0
+                denomj = 0
+                for k in range(len(iList)):
+                    a = (iList[k] - averi)
+                    b = (jList[k] - averj)
+                    number += (a * b)
+                    denomi += (a * a)
+                    denomj += (b * b)
+                denom = math.sqrt(denomi) * math.sqrt(denomj)
+                if denom == 0:
+                    w = 0
+                else:
+                    w = number / denom
+                wList.append((j[0], w))
+        print "====>", len(wList), wList, "\n"
+
 
         # for busi in user[1]:
 
