@@ -58,48 +58,71 @@ if CASE == 1:
 
 # CASE 2: User-based CF recommendation system
 if CASE == 2:
-    ratings = ratings.groupByKey().mapValues(list)
+    ratings = ratings.groupByKey().mapValues(list).collectAsMap()
+    busiSetDict = dict()
+    for key in ratings:
+        busi = set()
+        for count in range(len(ratings[key])):
+            busi.add(ratings[key][count][0])
+        busiSetDict[key] = busi
     test = test.groupByKey().mapValues(list)
+
     for usr in test.collect():
-        i = ratings.filter(lambda x: x[0] == usr[0]).collect()[0]
         busiIni = set()
+        i = (usr[0], ratings[usr[0]])
+        total = 0
         for icount in range(len(i[1])):
+            total += i[1][icount][1]
             busiIni.add(i[1][icount][0])
+        ave = total / len(i[1])
         wList = list()
-        for j in ratings.filter(lambda x: x[0] != usr[0]).collect():
+
+        jstart = time.time()
+        commonBusi = list()
+        for j in ratings:
+            if j == i[0]:
+                continue
+            l = len(busiIni & busiSetDict[j])
+            if l > 1:
+                commonBusi.append((j, l))
+        if len(commonBusi) >= 20:
+            commonBusi = sorted(commonBusi, key = lambda x: x[1], reverse = True)
+            commonBusi = commonBusi[:20]
+
+        for j in commonBusi:
             iList = list()
             jList = list()
-            busiInj = set()
-            for jcount in range(len(j[1])):
-                busiInj.add(j[1][jcount][0])
-            if len(busiIni & busiInj) > 4:
-                for icount in range(len(i[1])):
-                    for jcount in range(len(j[1])):
-                        if i[1][icount][0] == j[1][jcount][0]:
-                            iList.append(i[1][icount][1])
-                            jList.append(j[1][jcount][1])
-                averi = sum(iList) / len(iList)
-                averj = sum(jList) / len(jList)
-                number = 0
-                denomi = 0
-                denomj = 0
-                for k in range(len(iList)):
-                    a = (iList[k] - averi)
-                    b = (jList[k] - averj)
-                    number += (a * b)
-                    denomi += (a * a)
-                    denomj += (b * b)
-                denom = math.sqrt(denomi) * math.sqrt(denomj)
-                if denom == 0:
-                    w = 0
-                else:
-                    w = number / denom
-                wList.append((j[0], w))
-        print "====>", len(wList), wList, "\n"
+            for icount in range(len(i[1])):
+                for jcount in range(len(ratings[j[0]])):
+                    if i[1][icount][0] == ratings[j[0]][jcount][0]:
+                        iList.append(i[1][icount][1])
+                        jList.append(ratings[j[0]][jcount][1])
+            averi = sum(iList) / len(iList)
+            averj = sum(jList) / len(jList)
+            number = 0
+            denomi = 0
+            denomj = 0
+            for k in range(len(iList)):
+                a = (iList[k] - averi)
+                b = (jList[k] - averj)
+                number += (a * b)
+                denomi += (a * a)
+                denomj += (b * b)
+            denom = math.sqrt(denomi) * math.sqrt(denomj)
+            if denom == 0:
+                w = 0
+            else:
+                w = number / denom
+            wList.append((j, w))
 
+
+
+        
+        # print "====>", len(wList), wList, "\n"
+        jend = time.time()
+        # print "j time: %f sec" % (jend - jstart)
 
         # for busi in user[1]:
-
 
 # TEST
 # ratesAndPreds = testData.map(lambda r: ((r[0], r[1]), r[2])).join(predictions)
@@ -110,10 +133,11 @@ if CASE == 2:
 
 # Write into CSV
 predictionsPrint = list()
-for pred in predictions.collect():
-    res = (userDict[pred[0][0]], busiDict[pred[0][1]], pred[1])
-    predictionsPrint.append(res)
-    # print "predictions: ", predictionsPrint
+# for pred in predictions.collect():
+#     res = (userDict[pred[0][0]], busiDict[pred[0][1]], pred[1])
+#     predictionsPrint.append(res)
+
+# print "predictions: ", predictionsPrint
 with open(OUTPUT, 'w') as csv_output:
     csv_writer = csv.writer(csv_output)
     csv_writer.writerow(['user_id', 'business_id', 'prediction'])
