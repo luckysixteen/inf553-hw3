@@ -118,7 +118,7 @@ for group in candidate:
     if jacSim >= 0.5:
         res.append((group[0],group[1], jacSim))
 res = sorted(res, key = lambda x: x[0])
-print "Total: ", len(res)
+# print "Total: ", len(res)
 
 # ==================== BRUTH FORCE ====================
 # busiData = rawData.map(lambda x: (x[1], [abs(hash(x[0])) % (10**5)])).reduceByKey(lambda x,y: x+y)
@@ -161,7 +161,7 @@ with open(OUTPUT_CSV, 'w') as csv_output:
     csv_writer.writerows(res)
 
 timeEnd = time.time()
-print "Duration: %f sec" % (timeEnd - timeStart)
+# print "Duration: %f sec" % (timeEnd - timeStart)
 
 # bin/spark-submit \
 # --conf "spark.driver.extraJavaOptions=-Dlog4j.configuration=file:conf/log4j.xml" \
