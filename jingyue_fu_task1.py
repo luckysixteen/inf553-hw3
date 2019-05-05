@@ -7,9 +7,9 @@ from operator import add
 import csv
 
 def getHashSet(HASH_NUM):
-    a = [randrange(HASH_NUM) for _ in xrange(0, HASH_NUM)]
-    b = [randrange(PRIME_NUM/2) for _ in xrange(0, HASH_NUM)]
-    return zip(a, b)
+    a = [randrange(HASH_NUM) for _ in range(0, HASH_NUM)]
+    b = [randrange(int(PRIME_NUM/2)) for _ in range(0, HASH_NUM)]
+    return list(zip(a, b))
 
 
 def getHashValue(x, hashSet):
@@ -63,7 +63,7 @@ BUCKET_PRIME =  99991
 sc = SparkContext('local[*]', 'LSH')
 rawData = sc.textFile(INPUT_CSV, None, False)
 header = rawData.first()
-rawData = rawData.filter(lambda x: x != header).map(lambda x: x.split(','))
+rawData = rawData.filter(lambda x: x != header).map(lambda x: x.decode().split(','))
 rateData = rawData.map(lambda x: (abs(hash(x[0])) % (10**9), [x[1]])).reduceByKey(lambda x,y: x+y).sortByKey()
 # print rateData.take(10)
 
@@ -161,7 +161,7 @@ with open(OUTPUT_CSV, 'w') as csv_output:
     csv_writer.writerows(res)
 
 timeEnd = time.time()
-# print "Duration: %f sec" % (timeEnd - timeStart)
+print ("Duration: %f sec" % (timeEnd - timeStart))
 
 # bin/spark-submit \
 # --conf "spark.driver.extraJavaOptions=-Dlog4j.configuration=file:conf/log4j.xml" \
